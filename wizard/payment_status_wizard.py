@@ -71,37 +71,47 @@ class PaymentStatusWizard(models.TransientModel):
         # Sort by date
         all_items.sort(key=lambda x: x['date'])
 
-        # FIFO payment allocation
+        # First pass: separate debits and credits, calculate total credits
+        invoices = []
+        total_credits = 0.0
+        
+        for item in all_items:
+            if item['is_debit']:
+                invoices.append(item)
+            else:
+                total_credits += item['credit']
+
+        # Second pass: FIFO allocation to invoices
+        remaining_credits = total_credits
+        for invoice in invoices:
+            if remaining_credits >= invoice['debit']:
+                invoice['status'] = 'Paid'
+                invoice['highlight'] = False
+                remaining_credits -= invoice['debit']
+            elif remaining_credits > 0:
+                invoice['status'] = 'Partial'
+                invoice['highlight'] = True
+                remaining_credits = 0.0
+            else:
+                invoice['status'] = 'Unpaid'
+                invoice['highlight'] = True
+
+        # Third pass: build final lines with running balance
         lines = []
         balance = 0.0
-        available_credit = 0.0
-        first_unpaid_found = False
-
+        
         for item in all_items:
             balance += item['amount']
             
+            # Find status for invoices
             status = ''
             highlight = False
-            
-            if item['is_debit']:  # Invoice or Debit entry
-                invoice_amount = item['debit']
-                
-                # Apply available credits to this invoice
-                if available_credit > 0:
-                    if available_credit >= invoice_amount:
-                        available_credit -= invoice_amount
-                        status = 'Paid'
-                    else:
-                        available_credit = 0.0
-                        status = 'Partial'
-                else:
-                    status = 'Unpaid'
-                
-                # Highlight unpaid and partial invoices
-                highlight = status in ['Unpaid', 'Partial']
-                    
-            else:  # Payment or Credit entry
-                available_credit += item['credit']
+            if item['is_debit']:
+                for inv in invoices:
+                    if inv['reference'] == item['reference'] and inv['date'] == item['date']:
+                        status = inv['status']
+                        highlight = inv['highlight']
+                        break
             
             lines.append({
                 'date': item['date'],

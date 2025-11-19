@@ -12,13 +12,30 @@ class PaymentStatusWizard(models.TransientModel):
 
     def action_view_report(self):
         lines = self._get_report_lines()
+        
+        # Create transient records for tree view
+        line_ids = []
+        PaymentLine = self.env['payment.status.line']
+        for line in lines:
+            record = PaymentLine.create({
+                'date': line['date'],
+                'reference': line['reference'],
+                'description': line['description'],
+                'debit': line['debit'],
+                'credit': line['credit'],
+                'balance': line['balance'],
+                'status': line['status'],
+                'highlight': line['highlight']
+            })
+            line_ids.append(record.id)
+        
         return {
             'name': 'Payment Status Report',
             'type': 'ir.actions.act_window',
             'res_model': 'payment.status.line',
             'view_mode': 'tree',
             'views': [(self.env.ref('customer_payment_status.view_payment_status_line_tree').id, 'tree')],
-            'domain': [('id', 'in', [l['id'] for l in lines])],
+            'domain': [('id', 'in', line_ids)],
             'context': {'create': False, 'delete': False, 'edit': False}
         }
 

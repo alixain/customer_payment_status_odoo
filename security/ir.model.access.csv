@@ -1,3 +1,3 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_payment_status_wizard,payment.status.wizard,model_payment_status_wizard,account.group_account_invoice,1,1,1,1
-access_payment_status_line,payment.status.line,model_payment_status_line,account.group_account_invoice,1,1,1,1
+access_payment_status_wizard,payment.status.wizard,customer_payment_status.model_payment_status_wizard,account.group_account_invoice,1,1,1,1
+access_payment_status_line,payment.status.line,customer_payment_status.model_payment_status_line,account.group_account_invoice,1,1,1,1

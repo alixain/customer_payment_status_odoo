@@ -40,78 +40,73 @@ class PaymentStatusWizard(models.TransientModel):
         }
 
     def _get_report_lines(self):
-        invoices = self.env['account.move'].search([
+        # Get all account moves (invoices, credit notes, journal entries)
+        moves = self.env['account.move'].search([
             ('partner_id', '=', self.partner_id.id),
-            ('move_type', '=', 'out_invoice'),
             ('state', '=', 'posted'),
             ('date', '<=', self.date_to)
         ], order='date asc, name asc')
-
-        payments = self.env['account.payment'].search([
-            ('partner_id', '=', self.partner_id.id),
-            ('payment_type', '=', 'inbound'),
-            ('state', '=', 'posted'),
-            ('date', '<=', self.date_to)
-        ], order='date asc')
 
         lines = []
         balance = 0.0
         remaining_payment = 0.0
         first_unpaid_found = False
 
-        # Merge invoices and payments
-        all_items = []
-        for inv in invoices:
-            all_items.append({'type': 'invoice', 'date': inv.date, 'record': inv})
-        for pay in payments:
-            all_items.append({'type': 'payment', 'date': pay.date, 'record': pay})
-        
-        all_items.sort(key=lambda x: (x['date'], x['type'] == 'payment'))
+        # Get receivable account type
+        receivable_account = self.env['account.account'].search([
+            ('account_type', '=', 'asset_receivable')
+        ], limit=1)
 
+        all_items = []
+        
+        # Process all move lines affecting receivables
+        for move in moves:
+            for line in move.line_ids:
+                if line.account_id.account_type == 'asset_receivable' and line.partner_id.id == self.partner_id.id:
+                    amount = line.debit - line.credit
+                    
+                    if amount != 0:
+                        move_type = dict(move._fields['move_type'].selection).get(move.move_type, 'Entry')
+                        
+                        all_items.append({
+                            'date': move.date,
+                            'reference': move.name,
+                            'description': move_type,
+                            'debit': line.debit,
+                            'credit': line.credit,
+                            'balance': 0.0,  # Will calculate running balance
+                            'move_type': move.move_type,
+                            'amount': amount
+                        })
+
+        # Sort by date
+        all_items.sort(key=lambda x: x['date'])
+
+        # Calculate running balance and highlight logic
         for item in all_items:
-            if item['type'] == 'invoice':
-                inv = item['record']
-                balance += inv.amount_total
-                
-                paid_amount = 0.0
-                if remaining_payment > 0:
-                    if remaining_payment >= inv.amount_total:
-                        paid_amount = inv.amount_total
-                        remaining_payment -= inv.amount_total
-                        status = 'Paid'
-                    else:
-                        paid_amount = remaining_payment
-                        remaining_payment = 0.0
-                        status = 'Partial'
+            balance += item['amount']
+            item['balance'] = balance
+            
+            # Determine status and highlight
+            status = ''
+            highlight = False
+            
+            if item['debit'] > 0:  # Invoice/Debit
+                if balance <= 0:
+                    status = 'Paid'
+                elif item['amount'] > balance:
+                    status = 'Partial'
                 else:
                     status = 'Unpaid'
-
-                highlight = status in ['Unpaid', 'Partial']
-
-                lines.append({
-                    'date': inv.date,
-                    'reference': inv.name,
-                    'description': 'Invoice',
-                    'debit': inv.amount_total,
-                    'credit': 0.0,
-                    'balance': balance - remaining_payment,
-                    'status': status,
-                    'highlight': highlight
-                })
-            else:
-                pay = item['record']
-                balance -= pay.amount
-                remaining_payment += pay.amount
-                
-                lines.append({
-                    'date': pay.date,
-                    'reference': pay.name,
-                    'description': 'Payment',
-                    'debit': 0.0,
-                    'credit': pay.amount,
-                    'balance': balance - remaining_payment,
-                    'status': '',
-                    'highlight': False
-                })
+                    
+                if not first_unpaid_found and status in ['Unpaid', 'Partial']:
+                    highlight = True
+                    first_unpaid_found = True
+                elif status in ['Unpaid', 'Partial']:
+                    highlight = True
+            
+            item['status'] = status
+            item['highlight'] = highlight
+            lines.append(item)
 
         return lines

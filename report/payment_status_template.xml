@@ -31,7 +31,7 @@
                             </thead>
                             <tbody>
                                 <t t-set="lines" t-value="doc._get_report_lines()"/>
-                                <tr t-foreach="lines" t-as="line" t-att-style="'background-color: #ffcccc;' if line['highlight'] else ''">
+                                <tr t-foreach="lines" t-as="line" t-att-style="'background-color:#ffefcc;' if line['highlight'] else ''">
                                     <td><span t-esc="line['date']"/></td>
                                     <td><span t-esc="line['reference']"/></td>
                                     <td><span t-esc="line['description']"/></td>

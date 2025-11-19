@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_payment_status_report" model="ir.actions.report">
+        <field name="name">Payment Status Report</field>
+        <field name="model">payment.status.wizard</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">customer_payment_status.report_payment_status</field>
+        <field name="report_file">customer_payment_status.report_payment_status</field>
+        <field name="binding_model_id" ref="model_payment_status_wizard"/>
+        <field name="binding_type">report</field>
+    </record>
+</odoo>

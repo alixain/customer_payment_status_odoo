@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_payment_status_wizard_form" model="ir.ui.view">
+        <field name="name">payment.status.wizard.form</field>
+        <field name="model">payment.status.wizard</field>
+        <field name="arch" type="xml">
+            <form>
+                <group>
+                    <field name="partner_id"/>
+                    <field name="date_to"/>
+                </group>
+                <footer>
+                    <button name="action_print_report" string="Print PDF" type="object" class="btn-primary"/>
+                    <button name="action_view_report" string="View Report" type="object" class="btn-secondary"/>
+                    <button string="Cancel" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_payment_status_line_tree" model="ir.ui.view">
+        <field name="name">payment.status.line.tree</field>
+        <field name="model">payment.status.line</field>
+        <field name="arch" type="xml">
+            <tree decoration-danger="highlight">
+                <field name="date"/>
+                <field name="reference"/>
+                <field name="description"/>
+                <field name="debit"/>
+                <field name="credit"/>
+                <field name="status"/>
+                <field name="balance"/>
+                <field name="highlight" invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="action_payment_status_wizard" model="ir.actions.act_window">
+        <field name="name">Customer Payment Status</field>
+        <field name="res_model">payment.status.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem id="menu_payment_status_report"
+              name="Payment Status Report"
+              parent="account.menu_finance_reports"
+              action="action_payment_status_wizard"
+              sequence="100"/>
+</odoo>
